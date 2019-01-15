@@ -46,8 +46,8 @@ class GeomodeldiffList(ListEndpoint):
             except:
                 raise HttpError(400, 'Invalid Data')
         else:
-            print 'Already exists!'
-            print 'key=%s, key_id=%s' % (data['key'], data['key_id'])
+            print('Already exists!')
+            print('key=%s, key_id=%s' % (data['key'], data['key_id']))
             return Http200('Already exists!')
 
 
