@@ -1,11 +1,9 @@
 import json
 
 from django.apps import apps
-from django.db import transaction, connection
-from django.db.models import ForeignKey
 from django.conf import settings
-from django.contrib.gis.geos import GEOSGeometry
-from django.contrib.gis.utils.wkt import precision_wkt
+from django.contrib.gis.geos import GEOSGeometry, WKTWriter
+from django.db.models import ForeignKey
 from django.forms.models import model_to_dict
 
 from modeldiff.models import Geomodeldiff
@@ -34,7 +32,8 @@ def get_object_values(obj, model):
     values = model_to_dict(obj)
     geom = getattr(obj, geom_field)
     if geom:
-        values[geom_field] = precision_wkt(geom, geom_precision)
+        wkt_w = WKTWriter(precision=geom_precision)
+        values[geom_field] = wkt_w.write(geom)
     return values
 
 
@@ -57,12 +56,12 @@ def modeldiff_add(r):
     # TODO: check object does not exist
     obj, model = get_current_object_from_db(r)
     new_data = json.loads(r.new_data)
-    for k in new_data.keys():
+    for k in list(new_data.keys()):
         field = model._meta.get_field(k)
         if isinstance(field, ForeignKey):
             if new_data[k]:
                 # TODO: support multiple to_fields
-                kwargs = { field.to_fields[0]: new_data[k] }
+                kwargs = {field.to_fields[0]: new_data[k]}
                 value = field.rel.to().__class__.objects.get(**kwargs)
             else:
                 value = None
@@ -82,7 +81,7 @@ def modeldiff_update(r):
     old_data = json.loads(r.old_data)
     ok_to_apply = True
 
-    fields = old_data.keys()
+    fields = list(old_data.keys())
 
     current = get_object_values(obj, model)
 
@@ -94,22 +93,23 @@ def modeldiff_update(r):
             if not current_value == old_data[k]:
                 # recreate the geometry and the wkt back again
                 geom = GEOSGeometry(old_data[k])
-                old_data[k] = precision_wkt(geom, geom_precision)
+                wkt_w = WKTWriter(precision=geom_precision)
+                old_data[k] = wkt_w.write(geom)
 
-        if not unicode(current_value) == unicode(old_data[k]):
+        if not str(current_value) == str(old_data[k]):
             ok_to_apply = False
 
     r.fields = fields
 
     if ok_to_apply:
-        fields = get_fields(r) or old_data.keys()
+        fields = get_fields(r) or list(old_data.keys())
         new_data = json.loads(r.new_data)
         for k in set(fields) & set(new_data.keys()):
             field = model._meta.get_field(k)
             if isinstance(field, ForeignKey):
                 if new_data[k]:
                     # TODO: support multiple to_fields
-                    kwargs = { field.to_fields[0]: new_data[k] }
+                    kwargs = {field.to_fields[0]: new_data[k]}
                     value = field.rel.to().__class__.objects.get(**kwargs)
                 else:
                     value = None
@@ -129,7 +129,7 @@ def modeldiff_delete(r):
     old_data = json.loads(r.old_data)
     ok_to_apply = True
 
-    fields = old_data.keys()
+    fields = list(old_data.keys())
 
     current = get_object_values(obj, model)
 
@@ -141,9 +141,9 @@ def modeldiff_delete(r):
             if not current_value == old_data[k]:
                 # recreate the geometry and the wkt back again
                 geom = GEOSGeometry(old_data[k])
-                old_data[k] = precision_wkt(geom, geom_precision)
-
-        if not unicode(current_value) == unicode(old_data[k]):
+                wkt_w = WKTWriter(precision=geom_precision)
+                old_data[k] = wkt_w.write(geom)
+        if not str(current_value) == str(old_data[k]):
             ok_to_apply = False
 
     r.fields = fields

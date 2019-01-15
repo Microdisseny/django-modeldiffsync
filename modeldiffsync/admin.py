@@ -84,7 +84,7 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
         from .update import get_fields
 
         if request.method == 'POST':
-            print request.POST
+            print(request.POST)
             action = request.POST.get('action', None)
             id = request.POST.get('id', None)
             modeldiff = Geomodeldiff.objects.get(pk=id)
@@ -98,9 +98,9 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
 
             if action == 'all':
                 # fix previous data first
-                print "update ALL"
+                print("update ALL")
                 old_data = decode_json(modeldiff.old_data)
-                fields = get_fields(modeldiff) or old_data.keys()
+                fields = get_fields(modeldiff) or list(old_data.keys())
                 # for k in set(fields) & set(old_data.keys()):
                 #     setattr(obj, k, old_data[k])
                 for k in set(fields) & set(old_data.keys()):
@@ -118,9 +118,9 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
 
             new_data = decode_json(modeldiff.new_data)
             if action in ('all', 'new_only'):
-                print "update NEW only"
+                print("update NEW only")
                 new_data = decode_json(modeldiff.new_data)
-                fields = get_fields(modeldiff) or new_data.keys()
+                fields = get_fields(modeldiff) or list(new_data.keys())
                 # limit fields to those in new_data
                 # for k in set(fields) & set(new_data.keys()):
                 #     setattr(obj, k, new_data[k])
