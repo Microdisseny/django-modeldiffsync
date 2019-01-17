@@ -16,7 +16,15 @@ class GeomodeldiffList(ListEndpoint):
 
     def get_query_set(self, request, *args, **kwargs):
         last_id = request.GET.get('last_id', 0)
+        try:
+            last_id = int(last_id)
+        except Exception:
+            last_id = 0
         limit = request.GET.get('limit', 0)
+        try:
+            limit = int(limit)
+        except Exception:
+            limit = 0
 
         if self.model:
             queryset = (
