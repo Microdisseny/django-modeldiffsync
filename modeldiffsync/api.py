@@ -43,7 +43,7 @@ class GeomodeldiffList(ListEndpoint):
         return serialize(objs, exclude=('applied',))
 
     def post(self, request, *args, **kwargs):
-        data = json.loads(request.body)
+        data = json.loads(request.body.decode('utf-8'))
         qs = Geomodeldiff.objects.filter(key=data['key'],
                                          key_id=data['key_id'])
         if qs.count() == 0:
