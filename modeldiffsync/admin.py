@@ -109,7 +109,8 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
                         if old_data[k]:
                             # TODO: support multiple to_fields
                             kwargs = {field.to_fields[0]: old_data[k]}
-                            value = field.rel.to().__class__.objects.get(**kwargs)
+                            model_class = field.rel.model if hasattr(field, 'rel') else field.remote_field.model
+                            value = model_class.objects.get(**kwargs)
                         else:
                             value = None
                     else:
@@ -130,7 +131,8 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
                         if new_data[k]:
                             # TODO: support multiple to_fields
                             kwargs = { field.to_fields[0]: new_data[k] }
-                            value = field.rel.to().__class__.objects.get(**kwargs)
+                            model_class = field.rel.model if hasattr(field, 'rel') else field.remote_field.model
+                            value = model_class.objects.get(**kwargs)
                         else:
                             value = None
                     else:
