@@ -6,7 +6,7 @@ def create_remote_geomodeldiff(target_url, data):
     headers = {'content-type': 'application/json'}
     json_data = json.dumps(data)
     r = requests.post(target_url, data=json_data,
-                      headers=headers, verify=False)
+                      headers=headers, verify=True)
     return r
 
 
@@ -15,7 +15,7 @@ def run_sync(sync):
     print(sync.source_url)
     print(sync.last_id)
     payload = {'last_id': sync.last_id, 'limit': '100'}
-    r = requests.get(sync.source_url, params=payload, verify=False)
+    r = requests.get(sync.source_url, params=payload, verify=True)
     print(r.status_code)
     print(r.text)
     if not r.status_code == 200:

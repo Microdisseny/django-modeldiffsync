@@ -32,7 +32,7 @@ def run_single_sync(sync):
     print(sync.source_url)
     print(sync.last_id)
     payload = {'last_id': sync.last_id, 'limit': '100'}
-    r = requests.get(sync.source_url, params=payload, verify=False)
+    r = requests.get(sync.source_url, params=payload, verify=True)
     print(r.status_code)
     print(r.text)
     if not r.status_code == 200:
@@ -43,7 +43,7 @@ def run_single_sync(sync):
     print(sync.target_url)
     headers = {'content-type': 'application/json'}
     r = requests.post(sync.target_url, data=json.dumps(data[0]),
-                      headers=headers, verify=False)
+                      headers=headers, verify=True)
     print(r.status_code)
     print(r.text)
     if not r.status_code == 201:
