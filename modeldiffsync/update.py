@@ -73,7 +73,7 @@ def modeldiff_add(r):
 
 
 def equals(obj1, obj2):
-    if {'', None} == {obj1, obj2}
+    if {'', None} == {obj1, obj2}:
         return True
     return str(obj1) == str(obj2)
 
