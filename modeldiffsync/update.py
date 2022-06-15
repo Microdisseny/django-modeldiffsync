@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry, WKTWriter
 from django.db.models import ForeignKey
 from django.forms.models import model_to_dict
-
 from modeldiff.models import Geomodeldiff
 
 
@@ -73,6 +72,12 @@ def modeldiff_add(r):
     r.save()
 
 
+def equals(obj1, obj2):
+    if {'', None} == {obj1, obj2}
+        return True
+    return str(obj1) == str(obj2)
+
+
 def modeldiff_update(r):
     obj, model = get_current_object_from_db(r)
     geom_field = model.Modeldiff.geom_field
@@ -96,8 +101,10 @@ def modeldiff_update(r):
                 wkt_w = WKTWriter(precision=geom_precision)
                 old_data[k] = wkt_w.write(geom)
 
-        if not str(current_value) == str(old_data[k]):
-            ok_to_apply = False
+        if settings.MODELDIFF_NONE_EQUALS_EMPTY_STRING:
+            ok_to_apply = equals(current_value, old_data[k])
+        else:
+            ok_to_apply = str(current_value) == str(old_data[k])
 
     r.fields = fields
 
