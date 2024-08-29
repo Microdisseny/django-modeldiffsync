@@ -20,7 +20,7 @@ from .update import apply_modeldiffs, save_object
 try:
     from django.utils.encoding import force_text
 except ImportError:
-    from django.utils.encoding import force_unicode as force_text
+    from django.utils.encoding import force_str as force_text
 
 
 def decode_json(json_data):
