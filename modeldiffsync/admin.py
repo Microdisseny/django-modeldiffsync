@@ -1,5 +1,5 @@
 from django.db import models
-from django.conf.urls import url
+from django.urls import re_path
 from django.contrib import admin
 from django.forms import TextInput, Textarea
 from django.http import HttpResponseRedirect
@@ -20,7 +20,7 @@ from .update import apply_modeldiffs, save_object
 try:
     from django.utils.encoding import force_text
 except ImportError:
-    from django.utils.encoding import force_unicode as force_text
+    from django.utils.encoding import force_str as force_text
 
 
 def decode_json(json_data):
@@ -74,7 +74,7 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super(ModeldiffSyncAdmin, self).get_urls()
         my_urls = [
-            url(r'^apply_modeldiffs/$',
+            re_path(r'^apply_modeldiffs/$',
                 self.admin_site.admin_view(self.apply_modeldiffs))
         ]
         return my_urls + urls

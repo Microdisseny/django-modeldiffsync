@@ -2,69 +2,93 @@ import json
 
 from django.conf import settings
 from django.core.mail import mail_admins
-from restless.views import Endpoint
-from restless.modelviews import ListEndpoint, DetailEndpoint
-from restless.models import serialize
-from restless.http import HttpError, Http200, Http201
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 from modeldiff.models import Geomodeldiff
+from .serializers import GeomodeldiffSerializer
 
 
-class GeomodeldiffList(ListEndpoint):
-    model = Geomodeldiff
+class GeomodeldiffList(APIView):
+    authentication_classes = []
+    permission_classes = []
 
-    def get_query_set(self, request, *args, **kwargs):
-        last_id = request.GET.get('last_id', 0)
+    def get(self, request, *args, **kwargs):
         try:
-            last_id = int(last_id)
+            last_id = int(request.GET.get('last_id', 0))
         except Exception:
             last_id = 0
-        limit = request.GET.get('limit', 0)
+
         try:
-            limit = int(limit)
+            limit = int(request.GET.get('limit', 0))
         except Exception:
             limit = 0
 
-        if self.model:
-            queryset = (
-                self.model.objects.all()
-                .filter(key=settings.MODELDIFF_KEY)
-                .filter(pk__gt=last_id)
-                .order_by('id')
-            )
-            if limit > 0:
-                queryset = queryset[:limit]
-            return queryset
-        else:
-            raise HttpError(404, 'Resource Not Found')
+        qs = (
+            Geomodeldiff.objects
+            .filter(key=settings.MODELDIFF_KEY)
+            .filter(pk__gt=last_id)
+            .order_by('id')
+        )
 
-    def serialize(self, objs):
-        return serialize(objs, exclude=('applied',))
+        if limit > 0:
+            qs = qs[:limit]
+
+        serializer = GeomodeldiffSerializer(qs, exclude_fields=['applied'])
+
+        return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        data = json.loads(request.body.decode('utf-8'))
-        qs = Geomodeldiff.objects.filter(key=data['key'],
-                                         key_id=data['key_id'])
-        if qs.count() == 0:
-            obj = Geomodeldiff(**data)
+        try:
+            data = request.data
+        except Exception:
+            return Response(
+                'Invalid JSON',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        qs = Geomodeldiff.objects.filter(
+            key=data.get('key'),
+            key_id=data.get('key_id')
+        )
+
+        if not qs.exists():
             try:
+                obj = Geomodeldiff(**data)
                 obj.save()
-                return Http201(self.serialize(obj))
-            except:
-                raise HttpError(400, 'Invalid Data')
+
+                serializer = GeomodeldiffSerializer(obj, many=True, exclude_fields=['applied'])
+
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED
+                )
+
+            except Exception:
+                return Response(
+                    'Invalid Data',
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         else:
             print('Already exists!')
-            print('key=%s, key_id=%s' % (data['key'], data['key_id']))
-            return Http200('Already exists!')
+            print(f"key={data.get('key')}, key_id={data.get('key_id')}")
+
+            return Response(
+                'Already exists!',
+                status=status.HTTP_200_OK
+            )
 
 
-class Update(Endpoint):
-    def get(self, request):
+class Update(APIView):
+    def get(self, request, *args, **kwargs):
         from .update import apply_modeldiffs
         result = apply_modeldiffs()
 
         if len(result['rows_skipped']) > 0:
             mail_admins('Some modeldiffs failed to apply!', 'ERROR!')
 
-        return serialize(result['qs'], exclude=('the_geom'))
+        serializer = GeomodeldiffSerializer(result['qs'], many=True, exclude_fields=['the_geom'])
+
+        return Response(serializer.data)
