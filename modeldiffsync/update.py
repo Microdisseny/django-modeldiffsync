@@ -78,33 +78,44 @@ def equals(obj1, obj2):
     return str(obj1) == str(obj2)
 
 
-def modeldiff_update(r):
-    obj, model = get_current_object_from_db(r)
+def geom_equals(geom, wkt, geom_precision):
+    if not geom or not wkt:
+        return not geom and not wkt
+    # compare coordinates with a tolerance instead of the rounded wkt strings,
+    # values rounded on different servers can differ in the last decimal
+    tolerance = 10 ** -geom_precision
+    return geom.equals_exact(GEOSGeometry(wkt), tolerance)
+
+
+def current_matches_old_data(obj, model, old_data):
     geom_field = model.Modeldiff.geom_field
     geom_precision = model.Modeldiff.geom_precision
-
-    old_data = json.loads(r.old_data)
-    ok_to_apply = True
-
-    fields = list(old_data.keys())
+    none_equals_empty = getattr(
+        settings, 'MODELDIFF_NONE_EQUALS_EMPTY_STRING', False)
 
     current = get_object_values(obj, model)
 
     for k in old_data:
-        current_value = current.get(k)
-
         if k == geom_field:
-            # early check to detect precision errors
-            if not current_value == old_data[k]:
-                # recreate the geometry and the wkt back again
-                geom = GEOSGeometry(old_data[k])
-                wkt_w = WKTWriter(precision=geom_precision)
-                old_data[k] = wkt_w.write(geom)
-
-        if settings.MODELDIFF_NONE_EQUALS_EMPTY_STRING:
-            ok_to_apply = equals(current_value, old_data[k])
+            same = geom_equals(
+                getattr(obj, geom_field), old_data[k], geom_precision)
+        elif none_equals_empty:
+            same = equals(current.get(k), old_data[k])
         else:
-            ok_to_apply = str(current_value) == str(old_data[k])
+            same = str(current.get(k)) == str(old_data[k])
+
+        if not same:
+            return False
+
+    return True
+
+
+def modeldiff_update(r):
+    obj, model = get_current_object_from_db(r)
+
+    old_data = json.loads(r.old_data)
+    fields = list(old_data.keys())
+    ok_to_apply = current_matches_old_data(obj, model, old_data)
 
     r.fields = fields
 
@@ -130,28 +141,10 @@ def modeldiff_update(r):
 
 def modeldiff_delete(r):
     obj, model = get_current_object_from_db(r)
-    geom_field = model.Modeldiff.geom_field
-    geom_precision = model.Modeldiff.geom_precision
 
     old_data = json.loads(r.old_data)
-    ok_to_apply = True
-
     fields = list(old_data.keys())
-
-    current = get_object_values(obj, model)
-
-    for k in old_data:
-        current_value = current.get(k)
-
-        if k == geom_field:
-            # early check to detect precision errors
-            if not current_value == old_data[k]:
-                # recreate the geometry and the wkt back again
-                geom = GEOSGeometry(old_data[k])
-                wkt_w = WKTWriter(precision=geom_precision)
-                old_data[k] = wkt_w.write(geom)
-        if not str(current_value) == str(old_data[k]):
-            ok_to_apply = False
+    ok_to_apply = current_matches_old_data(obj, model, old_data)
 
     r.fields = fields
 
